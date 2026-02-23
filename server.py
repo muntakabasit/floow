@@ -31,9 +31,8 @@ def log(msg):
 # Config
 # ---------------------------------------------------------------------------
 
-# Load .env from parent project (BelawuOS/dawt_bridge_backend/.env)
-ENV_PATH = Path(__file__).resolve().parent.parent / "dawt_bridge_backend" / ".env"
-load_dotenv(ENV_PATH)
+# Local dev: load .env from current dir. Fly.io: secrets are real env vars.
+load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
