@@ -1,0 +1,2295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#F6F4EF">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Flow">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <title>Flow</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════
+       FLOW — Live interpreter · Warm minimal redesign
+       ═══════════════════════════════════════════════════════ */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box;
+      -webkit-tap-highlight-color:transparent; }
+
+    :root {
+      /* ── Palette (warm off-white) ──────────── */
+      --bg:        #F6F4EF;
+      --surface:   #EFECE5;
+      --surface2:  #FFFFFF;
+      --surface3:  #F0EDE6;
+      --border:    rgba(0,0,0,0.08);
+      --border-hi: rgba(0,0,0,0.14);
+
+      --text:      #1A1A1A;
+      --text-2:    #555555;
+      --text-3:    #999999;
+
+      /* accent: warm amber */
+      --accent:    #E0A846;
+      --accent-dim:#C4922E;
+      --accent-bg: rgba(224,168,70,0.08);
+      --accent-glow: rgba(224,168,70,0.20);
+
+      /* status */
+      --green:     #4CAF82;
+      --green-dim: rgba(76,175,130,0.15);
+      --red:       #D05050;
+      --red-dim:   rgba(208,80,80,0.10);
+      --blue:      #5C6BC0;
+      --blue-dim:  rgba(92,107,192,0.12);
+      --amber:     #E0A846;
+
+      /* spacing */
+      --space-1: 4px; --space-2: 8px; --space-3: 12px;
+      --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+
+      /* radii */
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 18px;
+      --radius-xl: 24px; --radius-pill: 999px;
+
+      /* typography */
+      --font: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+      --font-mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
+
+      /* motion */
+      --motion-fast: 150ms;
+      --motion-base: 220ms;
+      --motion-slow: 350ms;
+      --curve-standard: cubic-bezier(.2,.8,.2,1);
+
+      /* safe areas */
+      --safe-top:  env(safe-area-inset-top, 0px);
+      --safe-bot:  env(safe-area-inset-bottom, 0px);
+
+      /* orb + RMS */
+      --orb-level: 0;
+      --rms-intensity: 0;
+    }
+
+    html, body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      height: 100%; overflow: hidden;
+      touch-action: manipulation;
+      -webkit-user-select: none; user-select: none;
+    }
+
+    /* ═══ SHELL + CARD ════════════════════════════════════ */
+    .flow-shell {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100%;
+      padding: var(--safe-top) 12px var(--safe-bot);
+    }
+    .flow-card {
+      display: flex; flex-direction: column;
+      width: 100%; max-width: 480px;
+      height: 100%; max-height: 860px;
+      background: var(--surface2);
+      border-radius: 22px;
+      box-shadow: 0 2px 24px rgba(0,0,0,0.06), 0 0 0 1px var(--border);
+      overflow: hidden;
+    }
+
+    /* ═══ HEADER ═══════════════════════════════════════════ */
+    .flow-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px;
+      flex-shrink: 0;
+    }
+    .flow-wordmark {
+      font-size: 17px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      color: var(--text);
+    }
+
+    /* ── State pill ─────────────────────────────── */
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px 4px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--surface3);
+      border: none;
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-3);
+      transition: all .3s ease;
+    }
+    .pill-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--text-3);
+      transition: background .3s, box-shadow .3s;
+    }
+    .pill[data-state="connecting"]  { color: var(--amber); background: var(--accent-bg); }
+    .pill[data-state="connecting"] .pill-dot { background: var(--amber); animation: blink-dot 1s infinite; }
+    .pill[data-state="ready"]       { color: var(--green); background: var(--green-dim); }
+    .pill[data-state="ready"] .pill-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .pill[data-state="listening"]   { color: var(--green); background: var(--green-dim); }
+    .pill[data-state="listening"] .pill-dot { background: var(--green); animation: pulse-dot 1.8s infinite; }
+    .pill[data-state="translating"] { color: var(--blue); background: var(--blue-dim); }
+    .pill[data-state="translating"] .pill-dot { background: var(--blue); animation: blink-dot .6s infinite; }
+    .pill[data-state="speaking"]    { color: var(--accent); background: var(--accent-bg); }
+    .pill[data-state="speaking"] .pill-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .pill[data-state="offline"]     { color: var(--red); background: var(--red-dim); }
+    .pill[data-state="offline"] .pill-dot { background: var(--red); }
+
+    @keyframes pulse-dot {
+      0%,100% { opacity:1; transform:scale(1); }
+      50% { opacity:.4; transform:scale(.75); }
+    }
+    @keyframes blink-dot {
+      0%,100% { opacity:1; } 50% { opacity:.25; }
+    }
+
+    /* ═══ RECONNECT BANNER ════════════════════════════════ */
+    .reconnect-banner {
+      display: none; align-items: center; justify-content: center; gap: 10px;
+      padding: 8px 16px;
+      background: var(--red-dim);
+      font-size: 12px; font-weight: 600; color: var(--red);
+      flex-shrink: 0;
+    }
+    .reconnect-banner.show { display: flex; animation: slideDown .25s ease-out; }
+    .reconnect-banner button {
+      background: rgba(208,80,80,.12); border: 1px solid rgba(208,80,80,.25);
+      color: var(--red); font-size: 11px; font-weight: 700; font-family: var(--font);
+      padding: 3px 12px; border-radius: 6px; cursor: pointer;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .reconnect-banner button:active { transform: scale(.95); }
+    @keyframes slideDown { from { transform: translateY(-100%); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+    /* ═══ CONVERSATION AREA ═══════════════════════════════ */
+    .conversation {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Each turn = paired bubbles in a 2-col grid */
+    .bubble-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      animation: bubble-in var(--motion-base) var(--curve-standard) both;
+    }
+    @keyframes bubble-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: var(--radius-lg);
+      font-size: 15px;
+      line-height: 1.55;
+      word-wrap: break-word;
+      min-height: 52px;
+    }
+    .bubble-you {
+      background: var(--surface3);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+    .bubble-partner {
+      background: var(--accent-bg);
+      color: var(--text);
+      border: 1px solid rgba(224,168,70,0.12);
+      border-bottom-right-radius: 4px;
+    }
+    .bubble-meta {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 4px;
+    }
+    .bubble-badge {
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .5px;
+      color: var(--text-3);
+    }
+    .bubble-time {
+      font-size: 10px; color: var(--text-3);
+      font-family: var(--font-mono);
+    }
+    .bubble-body {
+      font-size: 15px; line-height: 1.55;
+    }
+
+    /* Streaming caret */
+    .bubble-partner.streaming .bubble-body::after {
+      content: "\25CD"; color: var(--accent);
+      animation: caret .8s step-end infinite;
+      margin-left: 2px;
+    }
+    @keyframes caret { 50% { opacity:0; } }
+
+    /* System message (centered) */
+    .bubble-system-wrap { display: block; }
+    .bubble-system {
+      text-align: center;
+      font-size: 11px; color: var(--text-3);
+      font-style: italic;
+      padding: 6px 12px;
+    }
+
+    /* Confidence */
+    .bubble-confidence {
+      font-size: 10px; margin-top: 4px;
+      display: inline-flex; gap: 3px; align-items: center;
+      color: var(--text-3);
+    }
+    .bubble-confidence.high { color: var(--green); }
+    .bubble-confidence.med  { color: var(--amber); }
+    .bubble-confidence.low  { color: var(--red); }
+
+    /* History compression */
+    .bubble-pair.compressed {
+      opacity: 0.35;
+      max-height: 44px; overflow: hidden;
+      transition: opacity .3s, max-height .3s;
+    }
+
+    /* Empty state */
+    .conversation-empty {
+      flex: 1; display: flex;
+      align-items: center; justify-content: center;
+      color: var(--text-3); font-size: 14px;
+      text-align: center; padding: 20px;
+      line-height: 1.6;
+    }
+
+    /* ═══ FOOTER ══════════════════════════════════════════ */
+    .flow-footer {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 12px 20px 16px;
+      gap: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .footer-left  { display: flex; justify-content: flex-end; }
+    .footer-right { display: flex; justify-content: flex-start; }
+
+    /* Audio mute toggle */
+    .footer-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-3); font-size: 9px; font-weight: 600;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 6px 8px; border-radius: 8px;
+      font-family: var(--font); text-transform: uppercase; letter-spacing: .5px;
+      transition: all .15s;
+    }
+    .footer-btn svg { width: 20px; height: 20px; fill: var(--text-3); transition: fill .15s; }
+    .footer-btn.on svg { fill: var(--accent); }
+    .footer-btn.on { color: var(--accent); }
+    .footer-btn:active { transform: scale(.9); }
+
+    /* Diagnostics toggle */
+    .diag-toggle {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--surface3);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: var(--text-3); letter-spacing: 2px;
+      transition: background .2s;
+    }
+    .diag-toggle:hover { background: var(--border-hi); }
+
+    /* ═══ ORB ═════════════════════════════════════════════ */
+    .mic.orb {
+      position: relative;
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      outline: none; -webkit-appearance: none;
+      background: radial-gradient(circle at 40% 35%, #FFFFFF 0%, #F5F0E4 60%, #EDE5D4 100%);
+      box-shadow: 0 2px 14px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+      transition: transform .2s var(--curve-standard), box-shadow .3s;
+    }
+    .mic.orb:active:not([data-vis="disabled"]) { transform: scale(0.93); }
+    .mic.orb:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+    .orb-ring {
+      position: absolute; inset: -8px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      opacity: 0; pointer-events: none;
+    }
+    .orb-icon {
+      width: 24px; height: 24px;
+      fill: var(--text-2);
+      transition: fill .25s;
+    }
+    .mic-label {
+      font-size: 10px; font-weight: 600;
+      color: var(--text-3); text-transform: uppercase;
+      letter-spacing: 1px; text-align: center;
+      min-height: 14px;
+    }
+
+    /* ── AUTO / HOLD mode toggle ── */
+    .mode-toggle {
+      display: flex;
+      background: var(--surface3);
+      border-radius: var(--radius-pill);
+      padding: 2px;
+      gap: 0;
+      border: 1px solid var(--border);
+    }
+    .mode-toggle-btn {
+      font-family: var(--font);
+      font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.8px;
+      padding: 4px 12px;
+      border: none; cursor: pointer;
+      border-radius: var(--radius-pill);
+      background: transparent;
+      color: var(--text-3);
+      transition: all var(--motion-fast) var(--curve-standard);
+      outline: none;
+      line-height: 1;
+    }
+    .mode-toggle-btn[aria-pressed="true"] {
+      background: var(--surface2);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .mode-toggle-btn:active { transform: scale(0.95); }
+
+    /* ── Orb state animations (transform/opacity only) ── */
+
+    /* IDLE / READY: Breathing */
+    .mic.orb[data-state="idle"],
+    .mic.orb[data-state="ready"] {
+      animation: orb-breathe 3.2s ease-in-out infinite;
+    }
+    @keyframes orb-breathe {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.03); }
+    }
+
+    /* LISTENING: Green glow from --orb-level */
+    .mic.orb[data-state="listening"] {
+      box-shadow:
+        0 0 calc(var(--orb-level, 0) * 30px + 4px) rgba(76,175,130, calc(var(--orb-level, 0) * 0.5 + 0.1)),
+        0 2px 14px rgba(0,0,0,0.08);
+      animation: none;
+    }
+    .mic.orb[data-state="listening"] .orb-icon { fill: var(--green); }
+
+    /* TRANSLATING: Ring pulse */
+    .mic.orb[data-state="translating"] .orb-ring {
+      opacity: 1;
+      animation: orb-ring-pulse 1.6s ease-out infinite;
+    }
+    @keyframes orb-ring-pulse {
+      0%   { transform: scale(1); opacity: 0.6; }
+      100% { transform: scale(1.35); opacity: 0; }
+    }
+    .mic.orb[data-state="translating"] .orb-icon { fill: var(--blue); }
+
+    /* SPEAKING: Warm amber glow */
+    .mic.orb[data-state="speaking"] {
+      animation: orb-speak-glow 1.8s ease-in-out infinite;
+    }
+    @keyframes orb-speak-glow {
+      0%, 100% { box-shadow: 0 0 12px rgba(224,168,70,0.2), 0 2px 14px rgba(0,0,0,0.08); }
+      50%      { box-shadow: 0 0 26px rgba(224,168,70,0.45), 0 2px 14px rgba(0,0,0,0.08); }
+    }
+    .mic.orb[data-state="speaking"] .orb-icon { fill: var(--accent); }
+
+    /* CONNECTING: Subtle pulse */
+    .mic.orb[data-state="connecting"] {
+      animation: orb-connecting 1.2s ease-in-out infinite;
+    }
+    @keyframes orb-connecting {
+      0%, 100% { opacity: 0.6; }
+      50%      { opacity: 1; }
+    }
+    .mic.orb[data-state="connecting"] .orb-icon { fill: var(--amber); }
+
+    /* OFFLINE: Desaturated + red dot */
+    .mic.orb[data-state="offline"] {
+      filter: saturate(0.3); opacity: 0.7;
+    }
+    .mic.orb[data-state="offline"]::after {
+      content: '';
+      position: absolute; top: 2px; right: 2px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--red);
+      border: 2px solid var(--surface2);
+    }
+    .mic.orb[data-state="offline"] .orb-icon { fill: var(--red); }
+
+    /* DISABLED */
+    .mic.orb[data-vis="disabled"] {
+      cursor: not-allowed; opacity: 0.4;
+    }
+
+    /* ═══ WAVEFORM (hidden, still in DOM for JS) ═════════ */
+    .wave { display: none; }
+    .wave.on { display: none; }
+    .wave-bar { width: 2.5px; height: 4px; }
+
+    /* ═══ DRAWER ══════════════════════════════════════════ */
+    .drawer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      max-height: 70vh;
+      background: var(--surface2);
+      border-top: 1px solid var(--border);
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      display: flex; flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 1000;
+      box-shadow: 0 -8px 30px rgba(0,0,0,0.1);
+    }
+    .drawer[data-open="true"] { transform: translateY(0); }
+
+    .drawer-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.15);
+      backdrop-filter: blur(4px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 999;
+    }
+
+    .drawer-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .drawer-close {
+      background: none; border: none;
+      color: var(--text-2); cursor: pointer;
+      padding: 4px; display: flex; align-items: center;
+      transition: color 0.2s;
+    }
+    .drawer-close:hover { color: var(--text); }
+    .drawer-close svg { fill: var(--text-2); }
+
+    .drawer-title {
+      font-size: 14px; font-weight: 600;
+      color: var(--text); text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .drawer-spacer { flex: 1; }
+
+    .drawer-toggle {
+      border: 1px solid var(--border);
+      background: var(--surface3);
+      color: var(--text-2);
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: .7px;
+      border-radius: var(--radius-pill);
+      padding: 5px 10px; cursor: pointer;
+      font-family: var(--font);
+    }
+    .drawer-toggle.on {
+      color: var(--accent);
+      border-color: rgba(224,168,70,.4);
+      background: rgba(224,168,70,.08);
+    }
+
+    .drawer-section {
+      flex: 1; overflow-y: auto;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .drawer-section:last-child { border-bottom: none; }
+
+    .drawer-label {
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text-3); padding: 8px 16px;
+      position: sticky; top: 0;
+      background: var(--surface2);
+    }
+
+    /* ═══ TRANSCRIPT (in drawer) ══════════════════════════ */
+    .transcript {
+      flex: 1; overflow-y: auto; padding: 8px 0;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+    .t-row {
+      display: flex; flex-direction: column;
+      gap: 8px; padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      animation: fadeRow .3s ease-out;
+      font-size: 14px; line-height: 1.55;
+    }
+    @keyframes fadeRow {
+      from { opacity:0; transform:translateY(8px); }
+      to { opacity:1; transform:translateY(0); }
+    }
+    .t-cell {
+      padding: 12px 14px; min-height: 40px;
+      display: flex; flex-direction: column; gap: 4px;
+      background: var(--surface3);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      word-wrap: break-word;
+    }
+    .t-src { color: var(--text-2); }
+    .t-tgt {
+      color: var(--text); font-weight: 500;
+      background: var(--accent-bg);
+      border-color: rgba(224,168,70,0.15);
+    }
+    .t-tgt.streaming::after {
+      content: "\25CD"; color: var(--accent);
+      animation: caret .8s step-end infinite;
+      margin-left: 2px;
+    }
+    .t-ts { font-size: 8px; color: var(--text-3); font-family: var(--font-mono); }
+    .t-speaker {
+      font-size: 9px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; margin-bottom: 2px;
+    }
+    .t-src .t-speaker { color: var(--text-3); }
+    .t-tgt .t-speaker { color: var(--accent); }
+    .t-text { font-size: 14px; line-height: 1.55; }
+    .t-confidence {
+      font-size: 8px; color: var(--text-3);
+      display: inline-flex; gap: 3px; align-items: center; margin-top: 4px;
+    }
+    .t-confidence.high { color: var(--green); }
+    .t-confidence.med { color: var(--amber); }
+    .t-confidence.low { color: var(--red); }
+    .t-system {
+      text-align: center; font-size: 11px; color: var(--text-3);
+      padding: 8px 14px; font-style: italic;
+      background: var(--surface3); border-radius: 8px; margin: 4px 8px;
+    }
+
+    /* ═══ DIAGNOSTICS ═════════════════════════════════════ */
+    .diag {
+      flex-shrink: 0; max-height: 0; overflow: hidden;
+      transition: max-height .3s ease;
+      border-top: 1px solid var(--border);
+      background: var(--surface3);
+    }
+    .diag.open { max-height: 200px; }
+    .diag-inner {
+      padding: 8px 14px;
+      font-family: var(--font-mono);
+      font-size: 10px; line-height: 1.6;
+      color: var(--text-2);
+      max-height: 180px; overflow-y: auto;
+    }
+    .diag-line { margin-bottom: 1px; }
+    .diag-line.err { color: var(--red); }
+    .diag-line.ok  { color: var(--green); }
+
+    /* ═══ HIDDEN COMPAT ═══════════════════════════════════ */
+    .compat-hidden { display: none !important; }
+
+    /* ═══ MEDIA QUERIES ═══════════════════════════════════ */
+    @media (max-width: 400px) {
+      .flow-card { border-radius: 0; max-height: none; }
+      .flow-shell { padding: var(--safe-top) 0 var(--safe-bot); }
+      .bubble-pair { grid-template-columns: 1fr; }
+    }
+    @media (max-height: 580px) {
+      .mic.orb { width: 60px; height: 60px; }
+      .flow-footer { padding: 8px 16px 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important; transition-duration: .01ms !important;
+      }
+    }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+<div class="flow-shell" id="app">
+  <div class="flow-card">
+
+    <!-- ═══ HEADER ═══ -->
+    <header class="flow-header">
+      <div class="flow-wordmark">Flow</div>
+      <div class="pill" id="pill" data-state="idle" role="status" aria-live="polite">
+        <span class="pill-dot"></span>
+        <span id="pillLabel">idle</span>
+      </div>
+    </header>
+
+    <!-- ═══ RECONNECT BANNER ═══ -->
+    <div class="reconnect-banner" id="reconnBar">
+      <span id="reconnMsg">Reconnecting&hellip;</span>
+      <button id="reconnBtn" aria-label="Reconnect now">Reconnect</button>
+    </div>
+
+    <!-- ═══ CONVERSATION ═══ -->
+    <div class="conversation" id="conversationArea">
+      <div class="conversation-empty" id="conversationEmpty">
+        Tap the orb to start
+      </div>
+    </div>
+
+    <!-- Hidden compat elements (engine writes to these IDs) -->
+    <div class="compat-hidden">
+      <div id="srcCard"><div id="currentSrc"></div></div>
+      <div id="tgtCard"><div id="currentTgt"></div></div>
+      <div id="recentExchanges"></div>
+    </div>
+
+    <!-- ═══ FOOTER ═══ -->
+    <div class="flow-footer">
+      <div class="footer-left">
+        <button class="footer-btn on" id="audioBtn" aria-label="Toggle spoken output" aria-pressed="true">
+          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+          <span>Audio</span>
+        </button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <button class="mic orb" id="micBtn" data-vis="idle" data-state="idle"
+                aria-label="Start interpreting" role="switch" aria-checked="false" tabindex="0">
+          <div class="orb-ring"></div>
+          <svg class="orb-icon" viewBox="0 0 24 24">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+          </svg>
+        </button>
+        <div class="mic-label" id="micLabel"></div>
+        <div class="mode-toggle" id="modeToggle" role="radiogroup" aria-label="Listening mode">
+          <button class="mode-toggle-btn" id="modeAuto" role="radio" aria-pressed="true" aria-label="Auto-detect speech">Auto</button>
+          <button class="mode-toggle-btn" id="modeHold" role="radio" aria-pressed="false" aria-label="Hold to talk">Hold</button>
+        </div>
+      </div>
+
+      <div class="footer-right">
+        <button class="diag-toggle" id="diagBtn" aria-label="Open history and diagnostics" aria-pressed="false">
+          &middot;&middot;&middot;
+        </button>
+      </div>
+    </div>
+
+    <!-- Waveform (hidden, still in DOM for JS peakLvl calc) -->
+    <div class="wave" id="wave" aria-hidden="true"></div>
+
+  </div><!-- /flow-card -->
+
+  <!-- ═══ DRAWER ═══ -->
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <button class="drawer-close" id="drawerClose" aria-label="Close history drawer">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+        </svg>
+      </button>
+      <span class="drawer-title">History</span>
+      <span class="drawer-spacer"></span>
+      <button class="drawer-toggle" id="settingsBtn" aria-label="Voice Activity Detection settings" aria-pressed="false">VAD</button>
+      <button class="drawer-toggle" id="offBtn" aria-label="Manually stop session" aria-pressed="false">OFF</button>
+      <button class="drawer-toggle" id="diagToggleBtn" aria-pressed="false">Diagnostics</button>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-label">Transcript</div>
+      <div class="transcript" id="transcript" role="log" aria-label="Translation log" aria-live="polite"></div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-label">Diagnostics</div>
+      <div class="diag" id="diag">
+        <div class="diag-inner" id="diagInner"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   FLOW CLIENT — State machine, reconnect, operator-grade
+   ═══════════════════════════════════════════════════════════ */
+'use strict';
+
+const RATE = 24000;                // wire sample rate
+const BACKOFF = [300,600,1200,2400,4800,8000,15000]; // exponential backoff with jitter (ms)
+const MAX_BACKOFF_ATTEMPTS = 10;   // give up after 10 attempts, show "tap to reconnect"
+const STABLE_MS = 2000;            // connection must hold this long to reset backoff
+const KEEPALIVE_TIMEOUT_DEFAULT = 60000;   // default: if no pong in 60s, die socket
+const KEEPALIVE_INTERVAL = 20000;  // client sends keepalive ping every 20s
+let KEEPALIVE_TIMEOUT = KEEPALIVE_TIMEOUT_DEFAULT;  // will be updated by server
+const WAVE_N = 15;                 // number of waveform bars
+
+// ── STATE ENUM ────────────────────────────────────────────
+const S = Object.freeze({
+  IDLE:        'idle',
+  CONNECTING:  'connecting',
+  READY:       'ready',
+  LISTENING:   'listening',
+  TRANSLATING: 'translating',
+  SPEAKING:    'speaking',
+  OFFLINE:     'offline',
+  FAILED:      'failed',
+});
+
+// ── APP STATE (single source of truth) ────────────────────
+let state      = S.IDLE;
+let ws         = null;
+let audioCtx   = null;
+let mediaStream= null;
+let processor  = null;
+let playCtx    = null;
+let audioQ     = [];
+
+// ── CLIENT-SIDE VAD (Voice Activity Detection) ────────────────────
+// RMS-based endpointing with hysteresis
+let vad = {
+  // Settings (persisted in localStorage)
+  sensitivity: 0.5,        // 0.0 (sensitive) → 1.0 (insensitive)
+  endDelayMs: 650,         // silence duration before finalization
+
+  // Runtime state
+  rmsSmoothed: 0,          // smoothed RMS energy
+  isSpeaking: false,       // speech detected (hysteresis)
+  silenceStart: null,      // when silence began
+
+  // Thresholds (derived from sensitivity)
+  get speechStartThreshold() {
+    // Lower = more sensitive. Range: 0.004 (max sensitive) → 0.015 (min sensitive)
+    return 0.004 + this.sensitivity * 0.011;
+  },
+  get speechStopThreshold() {
+    // Hysteresis: stop threshold lower than start threshold
+    return this.speechStartThreshold * 0.7;
+  },
+
+  // Update RMS every frame
+  updateRMS(audioFrame) {
+    // Calculate RMS from audio frame
+    let sum = 0;
+    for (let i = 0; i < audioFrame.length; i++) {
+      const s = audioFrame[i];
+      sum += s * s;
+    }
+    const rms = Math.sqrt(sum / audioFrame.length);
+
+    // Smooth with exponential moving average (α = 0.1 = responsive but not jittery)
+    const alpha = 0.1;
+    this.rmsSmoothed = this.rmsSmoothed * (1 - alpha) + rms * alpha;
+
+    return this.rmsSmoothed;
+  },
+
+  // Detect speech onset/offset with hysteresis
+  detectSpeech() {
+    if (!this.isSpeaking && this.rmsSmoothed > this.speechStartThreshold) {
+      // Speech detected (crossing up)
+      this.isSpeaking = true;
+      this.silenceStart = null;
+      return { event: 'speech_start', rms: this.rmsSmoothed };
+    }
+
+    if (this.isSpeaking && this.rmsSmoothed < this.speechStopThreshold) {
+      // Silence detected (crossing down) — start counting
+      if (this.silenceStart === null) {
+        this.silenceStart = performance.now();
+      }
+
+      const silenceDuration = performance.now() - this.silenceStart;
+      if (silenceDuration > this.endDelayMs) {
+        // Silence threshold reached — finalize
+        this.isSpeaking = false;
+        this.silenceStart = null;
+        return { event: 'speech_end', duration: silenceDuration, rms: this.rmsSmoothed };
+      }
+    }
+
+    // Still in speech or waiting for silence threshold
+    return { event: 'none' };
+  },
+
+  // Load from localStorage
+  load() {
+    const saved = localStorage.getItem('vad-settings');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        this.sensitivity = data.sensitivity || 0.5;
+        this.endDelayMs = data.endDelayMs || 650;
+      } catch(e) {
+        // Invalid data, use defaults
+      }
+    }
+  },
+
+  // Save to localStorage
+  save() {
+    localStorage.setItem('vad-settings', JSON.stringify({
+      sensitivity: this.sensitivity,
+      endDelayMs: this.endDelayMs,
+    }));
+  },
+
+  // Reset for new session
+  reset() {
+    this.rmsSmoothed = 0;
+    this.isSpeaking = false;
+    this.silenceStart = null;
+  }
+};
+
+// Load VAD settings on startup
+vad.load();
+let playing    = false;
+let peakLvl    = 0;
+let waveAnim   = null;
+let chunksSent = 0;
+
+let reconnIdx  = 0;           // index into BACKOFF
+let reconnTimer= null;
+let stableTimer= null;
+let sessionWanted = false;    // user wants mic active
+let wsWanted = false;         // WS only when session is explicitly started
+let failedReconnectCount = 0; // track consecutive failed reconnects (grace policy)
+
+// Conversation mode: 'auto' (VAD) or 'hold' (push-to-talk)
+let holdToTalkMode = localStorage.getItem('holdToTalkMode') === 'true';
+let isHoldingMic = false;
+
+// Reliability mode (runtime configurable)
+let reliabilityMode = localStorage.getItem('reliabilityMode') || 'stable'; // 'stable' or 'fast'
+let isModeSwitchRequested = false; // track if we need to send mode to server
+
+// ── INITIALIZE RUNTIME MODE FROM QUERY PARAMS ──────────────
+(function initializeMode() {
+  // Check query param (?mode=stable|fast) first
+  const params = new URLSearchParams(window.location.search);
+  const queryMode = params.get('mode');
+  if (queryMode && (queryMode === 'stable' || queryMode === 'fast')) {
+    reliabilityMode = queryMode;
+    localStorage.setItem('reliabilityMode', reliabilityMode);
+    console.log(`[INIT] Mode from query param: ${queryMode}`);
+  } else if (localStorage.getItem('reliabilityMode')) {
+    reliabilityMode = localStorage.getItem('reliabilityMode');
+    console.log(`[INIT] Mode from localStorage: ${reliabilityMode}`);
+  } else {
+    reliabilityMode = 'stable';
+    localStorage.setItem('reliabilityMode', reliabilityMode);
+    console.log('[INIT] Mode defaulted to: stable');
+  }
+})();
+
+// Keepalive tracking (client-side timeout detection)
+let lastPongTime = 0;         // timestamp of last pong received
+let keepaliveTimer = null;    // checks if pong received in time
+let clientKeepaliveTask = null; // sends keepalive ping every KEEPALIVE_INTERVAL
+
+let autoScroll = true;
+let audioOn    = true;
+let diagOpen   = false;
+let largeText  = false;
+
+let currentSrcEl  = null;
+let currentTgtEl  = null;
+let currentTgtTxt = '';
+let sessionId      = null;      // current session ID
+let sessionHistory = [];        // in-memory transcript
+
+// ── DOM REFS ──────────────────────────────────────────────
+const $app       = document.getElementById('app');
+const $pill      = document.getElementById('pill');
+const $pillLabel = document.getElementById('pillLabel');
+const $reconnBar = document.getElementById('reconnBar');
+const $reconnMsg = document.getElementById('reconnMsg');
+const $reconnBtn = document.getElementById('reconnBtn');
+const $transcript= document.getElementById('transcript');
+const $scrollToggle = document.getElementById('scrollToggle');
+const $scrollCheck  = document.getElementById('scrollCheck');
+const $wave      = document.getElementById('wave');
+const $micBtn    = document.getElementById('micBtn');
+const $micLabel  = document.getElementById('micLabel');
+const $audioBtn  = document.getElementById('audioBtn');
+const $diagBtn   = document.getElementById('diagBtn');
+const $diag      = document.getElementById('diag');
+const $diagInner = document.getElementById('diagInner');
+const $conversationArea = document.getElementById('conversationArea');
+const $conversationEmpty = document.getElementById('conversationEmpty');
+const $modeToggle  = document.getElementById('modeToggle');
+const $modeAuto    = document.getElementById('modeAuto');
+const $modeHold    = document.getElementById('modeHold');
+
+// ── BUBBLE STATE ──────────────────────────────────────────
+let currentBubblePair   = null;
+let currentYouBubble    = null;
+let currentPartnerBubble = null;
+let bubblePairCount     = 0;
+const MAX_VISIBLE_PAIRS = 6;
+
+// build waveform bars
+for (let i = 0; i < WAVE_N; i++) {
+  const b = document.createElement('div');
+  b.className = 'wave-bar';
+  $wave.appendChild(b);
+}
+const waveBars = $wave.querySelectorAll('.wave-bar');
+
+// ── HAPTIC ────────────────────────────────────────────────
+function haptic(ms = 10) { navigator.vibrate && navigator.vibrate(ms); }
+
+// ── DIAGNOSTICS LOG ───────────────────────────────────────
+function diagLog(msg, type = '') {
+  const ts = new Date().toLocaleTimeString('en-US', {hour12:false});
+  const el = document.createElement('div');
+  el.className = 'diag-line' + (type ? ' '+type : '');
+  el.textContent = `[${ts}] ${msg}`;
+  $diagInner.appendChild(el);
+  if ($diagInner.children.length > 100) $diagInner.removeChild($diagInner.firstChild);
+  $diagInner.scrollTop = $diagInner.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATE MACHINE — single transition point
+// ═══════════════════════════════════════════════════════════
+// Valid state transitions (state machine)
+const VALID_TRANSITIONS = {
+  [S.IDLE]:        [S.CONNECTING, S.OFFLINE],
+  [S.CONNECTING]:  [S.READY, S.OFFLINE, S.FAILED],
+  [S.READY]:       [S.LISTENING, S.OFFLINE, S.FAILED],
+  [S.LISTENING]:   [S.TRANSLATING, S.READY, S.SPEAKING, S.OFFLINE, S.FAILED],
+  [S.TRANSLATING]: [S.SPEAKING, S.READY, S.LISTENING, S.OFFLINE, S.FAILED],
+  [S.SPEAKING]:    [S.READY, S.LISTENING, S.OFFLINE, S.FAILED],
+  [S.OFFLINE]:     [S.CONNECTING, S.IDLE],
+  [S.FAILED]:      [S.CONNECTING, S.IDLE],
+};
+
+function transition(next) {
+  // Guard: no-op if already in state
+  if (next === state) return;
+
+  const prev = state;
+
+  // CRITICAL: Validate transition is allowed
+  const allowed = VALID_TRANSITIONS[prev] || [];
+  if (!allowed.includes(next)) {
+    diagLog(`❌ INVALID: ${prev} → ${next} (allowed: ${allowed.join(', ')})`, 'err');
+    return;  // Reject invalid transition
+  }
+
+  state = next;
+  diagLog(`${prev} → ${next}`, 'ok');
+
+  // pill
+  $pill.dataset.state = next;
+  $pillLabel.textContent = next;
+
+  // orb animations: set data-state for CSS animations
+  $micBtn.dataset.state = next;
+
+  // reconnect banner
+  $reconnBar.classList.toggle('show', next === S.OFFLINE);
+
+  // mic button visual + user-facing labels
+  // Labels: OFF, READY, LISTENING, TRANSLATING, SPEAKING
+  if (next === S.OFFLINE) {
+    $micBtn.dataset.vis = 'disabled';
+    $micLabel.textContent = 'offline';
+  } else if (next === S.IDLE) {
+    $micBtn.dataset.vis = 'idle';
+    $micLabel.textContent = 'off';
+  } else if (next === S.CONNECTING) {
+    $micBtn.dataset.vis = 'disabled';
+    $micLabel.textContent = 'connecting';
+  } else if (next === S.READY) {
+    $micBtn.dataset.vis = 'idle';
+    $micLabel.textContent = 'ready';
+  } else if (next === S.LISTENING) {
+    $micBtn.dataset.vis = 'live';
+    $micLabel.textContent = 'listening';
+  } else if (next === S.TRANSLATING) {
+    $micBtn.dataset.vis = 'live';
+    $micLabel.textContent = 'translating';
+  } else if (next === S.SPEAKING) {
+    $micBtn.dataset.vis = 'live';
+    $micLabel.textContent = 'speaking';
+  }
+
+  // mic aria
+  const isLive = [S.LISTENING, S.TRANSLATING, S.SPEAKING].includes(next);
+  $micBtn.setAttribute('aria-checked', isLive);
+  $micBtn.setAttribute('aria-label', isLive ? 'Stop interpreting' : 'Start interpreting');
+
+  // waveform
+  if (isLive) startWave(); else stopWave();
+
+  // on offline/failed: stop mic cleanly
+  if (next === S.OFFLINE || next === S.FAILED) {
+    killMic();
+    killPlayback();
+  }
+
+  // cleanup keepalive timers on disconnect states
+  if (next === S.OFFLINE || next === S.FAILED || next === S.IDLE) {
+    if (keepaliveTimer) { clearInterval(keepaliveTimer); keepaliveTimer = null; }
+    if (clientKeepaliveTask) { clearInterval(clientKeepaliveTask); clientKeepaliveTask = null; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUDIO UTILITIES
+// ═══════════════════════════════════════════════════════════
+function resample(inp, rateIn, rateOut) {
+  if (rateIn === rateOut) return inp;
+  const ratio = rateIn / rateOut;
+  const len = Math.round(inp.length / ratio);
+  const out = new Float32Array(len);
+  for (let i = 0; i < len; i++) {
+    const si = i * ratio, lo = Math.floor(si);
+    const hi = Math.min(lo+1, inp.length-1), f = si - lo;
+    out[i] = inp[lo]*(1-f) + inp[hi]*f;
+  }
+  return out;
+}
+function f32toI16(f32) {
+  const i16 = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++) {
+    const s = Math.max(-1, Math.min(1, f32[i]));
+    i16[i] = s < 0 ? s*0x8000 : s*0x7FFF;
+  }
+  return i16;
+}
+function i16toB64(i16) {
+  const bytes = new Uint8Array(i16.buffer);
+  const C = 8192; let bin = '';
+  for (let i = 0; i < bytes.length; i += C) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i+C, bytes.length)));
+  }
+  return btoa(bin);
+}
+function timeStr() {
+  return new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+
+// ═══════════════════════════════════════════════════════════
+// WAVEFORM
+// ═══════════════════════════════════════════════════════════
+function startWave() {
+  $wave.classList.add('on');
+  if (waveAnim) cancelAnimationFrame(waveAnim);
+  (function tick() {
+    const lvl = vad.isSpeaking ? Math.min(peakLvl * 80, 24) : 2;
+    for (let i = 0; i < waveBars.length; i++) {
+      const h = 4 + Math.random() * Math.max(lvl, 2);
+      waveBars[i].style.height = h + 'px';
+    }
+    waveAnim = requestAnimationFrame(tick);
+  })();
+}
+function stopWave() {
+  $wave.classList.remove('on');
+  if (waveAnim) { cancelAnimationFrame(waveAnim); waveAnim = null; }
+  waveBars.forEach(b => b.style.height = '4px');
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUBBLE HELPERS (conversation area)
+// ═══════════════════════════════════════════════════════════
+function createBubblePair(sourceText) {
+  var srcLang = (localStorage.getItem('sourceLanguage') || 'en').toUpperCase();
+  var tgtLang = (localStorage.getItem('targetLanguage') || 'pt').toUpperCase();
+  var ts = timeStr();
+  var pair = document.createElement('div');
+  pair.className = 'bubble-pair';
+  var youB = document.createElement('div');
+  youB.className = 'bubble bubble-you';
+  youB.innerHTML = '<div class="bubble-meta"><span class="bubble-badge">You \u00B7 '+esc(srcLang)+'</span><span class="bubble-time">'+ts+'</span></div><div class="bubble-body">'+esc(sourceText)+'</div>';
+  var partB = document.createElement('div');
+  partB.className = 'bubble bubble-partner';
+  partB.innerHTML = '<div class="bubble-meta"><span class="bubble-badge">Partner \u00B7 '+esc(tgtLang)+'</span><span class="bubble-time">'+ts+'</span></div><div class="bubble-body"></div>';
+  pair.appendChild(youB);
+  pair.appendChild(partB);
+  return { pair: pair, youBubble: youB, partnerBubble: partB };
+}
+function compressBubbles() {
+  if (!$conversationArea) return;
+  var pairs = $conversationArea.querySelectorAll('.bubble-pair:not(.bubble-system-wrap)');
+  if (pairs.length <= MAX_VISIBLE_PAIRS) return;
+  for (var i = 0; i < pairs.length - MAX_VISIBLE_PAIRS; i++) pairs[i].classList.add('compressed');
+  while ($conversationArea.querySelectorAll('.bubble-pair').length > 12) {
+    var oldest = $conversationArea.querySelector('.bubble-pair');
+    if (oldest) oldest.remove();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TRANSCRIPT RENDERING
+// ═══════════════════════════════════════════════════════════
+function addSystemRow(text) {
+  if ($conversationArea) {
+    if ($conversationEmpty) $conversationEmpty.remove();
+    var w = document.createElement('div');
+    w.className = 'bubble-pair bubble-system-wrap';
+    w.innerHTML = '<div class="bubble-system">'+text+'</div>';
+    $conversationArea.appendChild(w);
+    $conversationArea.scrollTop = $conversationArea.scrollHeight;
+  }
+  var row = document.createElement('div');
+  row.className = 't-row';
+  row.innerHTML = '<div class="t-cell t-system">'+text+'</div>';
+  $transcript.appendChild(row);
+  scrollTranscript();
+}
+function addSourceRow(text) {
+  var $cSrc = document.getElementById('currentSrc');
+  var $cTgt = document.getElementById('currentTgt');
+  if ($cSrc) $cSrc.textContent = text;
+  if ($cTgt) $cTgt.textContent = '';
+  if ($conversationArea) {
+    if ($conversationEmpty) $conversationEmpty.remove();
+    var b = createBubblePair(text);
+    $conversationArea.appendChild(b.pair);
+    currentBubblePair = b.pair;
+    currentYouBubble = b.youBubble;
+    currentPartnerBubble = b.partnerBubble;
+    bubblePairCount++;
+    compressBubbles();
+    $conversationArea.scrollTop = $conversationArea.scrollHeight;
+  }
+  var row = document.createElement('div');
+  row.className = 't-row';
+  row.innerHTML = '<div class="t-cell t-src"><span class="t-ts">'+timeStr()+'</span><span class="t-speaker">YOU</span><span class="t-text">'+esc(text)+'</span></div><div class="t-cell t-tgt" id="tgt-active"><span class="t-speaker">TRANSLATION</span></div>';
+  $transcript.appendChild(row);
+  currentSrcEl = row.querySelector('.t-src');
+  currentTgtEl = row.querySelector('.t-tgt');
+  currentTgtTxt = '';
+  scrollTranscript();
+}
+function appendTranslation(delta) {
+  // Update conversation bubble
+  if (currentPartnerBubble) {
+    currentPartnerBubble.classList.add('streaming');
+    var body = currentPartnerBubble.querySelector('.bubble-body');
+    if (body) body.textContent += delta;
+    if ($conversationArea) $conversationArea.scrollTop = $conversationArea.scrollHeight;
+  }
+  // Drawer transcript
+  if (!currentTgtEl) {
+    var row = document.createElement('div');
+    row.className = 't-row';
+    row.innerHTML = '<div class="t-cell t-src"></div><div class="t-cell t-tgt streaming"><span class="t-speaker">TRANSLATION</span></div>';
+    $transcript.appendChild(row);
+    currentTgtEl = row.querySelector('.t-tgt');
+    currentTgtTxt = '';
+  }
+  currentTgtEl.classList.add('streaming');
+  currentTgtTxt += delta;
+  var textEl = currentTgtEl.querySelector('.t-text');
+  if (!textEl) { textEl = document.createElement('span'); textEl.className = 't-text'; currentTgtEl.appendChild(textEl); }
+  textEl.textContent = currentTgtTxt;
+  scrollTranscript();
+}
+function finishTranslation(finalText, confidence = null) {
+  // 1. Hidden compat
+  var $cTgt = document.getElementById('currentTgt');
+  if ($cTgt && finalText) $cTgt.textContent = finalText;
+  // 2. Conversation bubble
+  if (currentPartnerBubble) {
+    currentPartnerBubble.classList.remove('streaming');
+    if (finalText) { var bd = currentPartnerBubble.querySelector('.bubble-body'); if (bd) bd.textContent = finalText; }
+    if (confidence !== null) {
+      var ce = document.createElement('span'); ce.className = 'bubble-confidence';
+      if (confidence >= 80) { ce.classList.add('high'); ce.textContent = confidence+'%'; }
+      else if (confidence >= 60) { ce.classList.add('med'); ce.textContent = confidence+'%'; }
+      else { ce.classList.add('low'); ce.textContent = confidence+'%'; }
+      currentPartnerBubble.appendChild(ce);
+    }
+    if ($conversationArea) $conversationArea.scrollTop = $conversationArea.scrollHeight;
+  }
+  currentBubblePair = null; currentYouBubble = null; currentPartnerBubble = null;
+  // 3. Drawer transcript
+  if (currentTgtEl) {
+    currentTgtEl.classList.remove('streaming');
+    if (finalText) {
+      var ex = currentTgtEl.querySelector('.t-text'); if (ex) ex.remove();
+      var te = document.createElement('span'); te.className = 't-text'; te.textContent = finalText;
+      currentTgtEl.appendChild(te);
+      if (confidence !== null) {
+        var cf = document.createElement('span'); cf.className = 't-confidence';
+        if (confidence >= 80) { cf.classList.add('high'); cf.textContent = confidence+'%'; }
+        else if (confidence >= 60) { cf.classList.add('med'); cf.textContent = confidence+'%'; }
+        else { cf.classList.add('low'); cf.textContent = confidence+'%'; }
+        currentTgtEl.appendChild(cf);
+      }
+    }
+  }
+  currentSrcEl = null; currentTgtEl = null; currentTgtTxt = '';
+  compressBubbles();
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function scrollTranscript() {
+  if (autoScroll) $transcript.scrollTop = $transcript.scrollHeight;
+}
+
+// limit transcript rows
+function trimTranscript() {
+  while ($transcript.children.length > 60) $transcript.removeChild($transcript.firstChild);
+}
+
+// Session persistence
+function initSession() {
+  sessionId = 'session_' + Date.now();
+  sessionHistory = [];
+  try {
+    localStorage.setItem('flow_current_session', sessionId);
+  } catch (e) { console.warn('localStorage unavailable'); }
+
+  // Send mode preference to server (if WebSocket ready)
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: 'mode_preference',
+      mode: reliabilityMode
+    }));
+    diagLog(`Sent mode preference: ${reliabilityMode}`, 'ok');
+  }
+}
+
+function saveExchange(source, target, confidence = null) {
+  const exchange = { timestamp: Date.now(), source, target, confidence };
+  sessionHistory.push(exchange);
+  try {
+    const sessions = JSON.parse(localStorage.getItem('flow_sessions') || '{}');
+    if (!sessions[sessionId]) sessions[sessionId] = { started: Date.now(), exchanges: [] };
+    sessions[sessionId].exchanges.push(exchange);
+    localStorage.setItem('flow_sessions', JSON.stringify(sessions));
+  } catch (e) { console.warn('localStorage save failed'); }
+}
+
+function loadSessionHistory() {
+  try {
+    const currentId = localStorage.getItem('flow_current_session');
+    if (!currentId) return;
+    const sessions = JSON.parse(localStorage.getItem('flow_sessions') || '{}');
+    if (sessions[currentId]) {
+      sessionHistory = sessions[currentId].exchanges || [];
+      return sessionHistory;
+    }
+  } catch (e) { console.warn('localStorage load failed'); }
+  return [];
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUDIO PLAYBACK
+// ═══════════════════════════════════════════════════════════
+function getPlayCtx() {
+  if (!playCtx || playCtx.state === 'closed')
+    playCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: RATE });
+  // Mobile browsers start AudioContext in 'suspended' — must resume for audio to play
+  if (playCtx.state === 'suspended') playCtx.resume();
+  return playCtx;
+}
+let ttsDoneNotified = false;    // prevent duplicate tts_playback_done
+let turnCompletePending = false; // defer turn cycle until TTS playback finishes
+
+function enqueueAudio(b64) {
+  ttsDoneNotified = false;
+  if (!audioOn) { notifyTTSDone(); return; }
+  audioQ.push(b64);
+  if (!playing) drainQ();
+}
+function drainQ() {
+  if (!audioQ.length) {
+    playing = false;
+    notifyTTSDone();
+    // Deferred turn cycle: TTS finished playing, NOW resume listening
+    if (turnCompletePending) {
+      turnCompletePending = false;
+      finishTranslation();
+      if (holdToTalkMode) {
+        // HOLD mode: turn is done, kill mic and stop at READY
+        diagLog('TTS done → READY (hold mode)', 'ok');
+        killMic();
+        transition(S.READY);
+      } else {
+        diagLog('TTS playback done → resuming listening', 'ok');
+        transition(S.LISTENING);
+        if (sessionWanted && !mediaStream) startMic();
+      }
+    }
+    return;
+  }
+  playing = true;
+  const raw = atob(audioQ.shift());
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  const i16 = new Int16Array(bytes.buffer);
+  const f32 = new Float32Array(i16.length);
+  for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+  const ctx = getPlayCtx();
+  const buf = ctx.createBuffer(1, f32.length, RATE);
+  buf.getChannelData(0).set(f32);
+  const src = ctx.createBufferSource();
+  src.buffer = buf; src.connect(ctx.destination);
+  // Safety timeout: if onended doesn't fire (suspended context), force-drain
+  const chunkMs = (f32.length / RATE) * 1000;
+  const safety = setTimeout(() => { diagLog('drainQ safety timeout', 'warn'); drainQ(); }, chunkMs + 500);
+  src.onended = () => { clearTimeout(safety); drainQ(); };
+  src.start();
+}
+function notifyTTSDone() {
+  if (ttsDoneNotified) return;
+  ttsDoneNotified = true;
+  if (ws && ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify({ type: 'tts_playback_done' }));
+}
+function killPlayback() {
+  audioQ = []; playing = false;
+  turnCompletePending = false; // cancel deferred turn cycle on kill
+  ttsDoneNotified = true;      // prevent stale done signal after kill
+  if (playCtx && playCtx.state !== 'closed') { try { playCtx.close(); } catch(e){} playCtx = null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MICROPHONE
+// ═══════════════════════════════════════════════════════════
+async function startMic() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount:1, echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+    });
+  } catch (err) {
+    diagLog('Mic denied: ' + err.message, 'err');
+    addSystemRow('Microphone access denied. Grant permission and try again.');
+    sessionWanted = false;
+    transition(S.READY);
+    return;
+  }
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  const nativeRate = audioCtx.sampleRate;
+  diagLog(`Mic open: ${nativeRate}Hz → ${RATE}Hz`);
+  const src = audioCtx.createMediaStreamSource(mediaStream);
+  processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+  processor.onaudioprocess = (ev) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (state === S.OFFLINE) return;
+    try {
+      const inp = ev.inputBuffer.getChannelData(0);
+
+      // ─ RMS-based VAD ─
+      const rmsSmoothed = vad.updateRMS(inp);
+      const vadEvent = vad.detectSpeech();
+
+      // Log VAD events (optional, for debugging)
+      if (vadEvent.event === 'speech_start') {
+        diagLog(`VAD: Speech detected (RMS: ${rmsSmoothed.toFixed(4)})`, 'info');
+      } else if (vadEvent.event === 'speech_end') {
+        diagLog(`VAD: Silence ${vadEvent.duration.toFixed(0)}ms (RMS: ${rmsSmoothed.toFixed(4)})`, 'info');
+      }
+
+      // ─ BARGE-IN: interrupt TTS when user starts speaking ─
+      if (vadEvent.event === 'speech_start' && state === S.SPEAKING) {
+        diagLog('BARGE-IN: Speech detected during TTS, stopping playback', 'warn');
+        killPlayback();
+        // Notify server that TTS was interrupted
+        if (ws && ws.readyState === WebSocket.OPEN)
+          ws.send(JSON.stringify({ type: 'tts_playback_done' }));
+        transition(S.LISTENING);
+        haptic(10);
+      }
+
+      // ─ Peak level for waveform (unchanged) ─
+      let mx = 0;
+      for (let i = 0; i < inp.length; i++) { const a = Math.abs(inp[i]); if (a>mx) mx=a; }
+      peakLvl = peakLvl * 0.7 + mx * 0.3;
+
+      // Don't send audio while TTS is playing (echo suppression)
+      if (state === S.SPEAKING) return;
+
+      // Always stream audio to server while LISTENING — server has Silero VAD
+      // Client VAD is only for barge-in detection and waveform viz
+      if (state !== S.LISTENING) return;
+
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        // Connection lost - let ws.onclose handle reconnection
+        return;
+      }
+
+      try {
+        const rs = resample(inp, nativeRate, RATE);
+        ws.send(JSON.stringify({ type:'audio', audio: i16toB64(f32toI16(rs)) }));
+        chunksSent++;
+      } catch(e) {
+        // Send failed - connection might be dead
+        diagLog(`Audio send failed: ${e.message}`, 'err');
+        if (ws) ws.close();  // Trigger reconnect
+      }
+    } catch(e) {
+      // Audio processing error - log but don't crash
+      diagLog(`Audio process error: ${e.message}`, 'err');
+    }
+  };
+
+  src.connect(processor);
+  processor.connect(audioCtx.destination);
+  if (state === S.READY) transition(S.LISTENING);
+}
+
+function killMic() {
+  diagLog('Cleaning up mic resources', 'info');
+
+  if (processor) {
+    try { processor.disconnect(); } catch(e){}
+    processor = null;
+  }
+  if (audioCtx)  {
+    try { audioCtx.close(); } catch(e){}
+    audioCtx = null;
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t=>t.stop());
+    mediaStream = null;
+  }
+
+  chunksSent = 0;
+  peakLvl = 0;
+  vad.reset();  // Clear VAD state
+
+  diagLog('Mic resources cleaned', 'ok');
+}
+
+// ═══════════════════════════════════════════════════════════
+// WEBSOCKET + RECONNECT
+// ═══════════════════════════════════════════════════════════
+
+// Gate: ensures server is ready before allowing session
+let serverReadyGate = false;
+let isReconnecting = false;
+
+function wsConnect() {
+  // Prevent reconnect cascade
+  if (isReconnecting) {
+    diagLog('Already reconnecting, skipping duplicate attempt', 'info');
+    return;
+  }
+
+  // guard: don't create duplicates
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+  isReconnecting = true;
+  transition(S.CONNECTING);
+
+  // CRITICAL: Check if server is ready before connecting
+  // (Server needs time to load Whisper, Piper, VAD, Ollama models)
+  const proto = location.protocol === 'https:' ? 'https:' : 'http:';
+  const healthUrl = `${proto}//${location.host}/health`;
+
+  diagLog('Checking server health...', 'info');
+
+  fetch(healthUrl)
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        diagLog('Server ready, connecting WebSocket...', 'ok');
+        wsConnectNow();
+      } else {
+        diagLog(`Server not ready: ${data.status}`, 'err');
+        isReconnecting = false;
+        transition(S.OFFLINE);
+        if (wsWanted) scheduleReconnect();
+      }
+    })
+    .catch(err => {
+      diagLog(`Health check failed: ${err.message}. Retrying...`, 'err');
+      isReconnecting = false;
+      transition(S.OFFLINE);
+      if (wsWanted) scheduleReconnect();
+    });
+}
+
+function wsConnectNow() {
+  // Actually establish WebSocket connection (after health check passes)
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${proto}//${location.host}/ws`;
+  diagLog(`WebSocket connecting to ${url}`, 'ok');
+
+  try {
+    ws = new WebSocket(url);
+  } catch (e) {
+    diagLog(`WebSocket creation error: ${e.message}`, 'err');
+    isReconnecting = false;
+    transition(S.FAILED);
+    if (wsWanted) scheduleReconnect();
+    return;
+  }
+
+  ws.onopen = () => {
+    diagLog('WebSocket open', 'ok');
+    isReconnecting = false;
+    lastPongTime = Date.now();
+
+    // Start stability timer — if connection survives STABLE_MS, reset backoff
+    clearTimeout(stableTimer);
+    stableTimer = setTimeout(() => { reconnIdx = 0; }, STABLE_MS);
+
+    // Start client-side keepalive check
+    startClientKeepalive();
+
+    initSession();
+    // Don't transition to READY yet — wait for flow.ready from server
+    // Server may need time to initialize models (Whisper, Piper, etc.)
+    diagLog('WS open, awaiting flow.ready...', 'ok');
+  };
+
+  ws.onmessage = (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+      // Update pong timer on ANY message (to keep connection alive)
+      lastPongTime = Date.now();
+      handleMsg(msg);
+    } catch(e) {
+      diagLog('Parse error: '+e.message, 'err');
+    }
+  };
+
+  ws.onerror = (ev) => {
+    diagLog('⚠️ WebSocket error event', 'err');
+    diagLog(`Error details: ${JSON.stringify(ev)}`, 'err');
+    // Don't close here - let onclose handle it
+    // Closing might cause duplicate handling
+  };
+
+  ws.onclose = (ev) => {
+    clearTimeout(stableTimer);
+    if (keepaliveTimer) { clearInterval(keepaliveTimer); keepaliveTimer = null; }
+    if (clientKeepaliveTask) { clearInterval(clientKeepaliveTask); clientKeepaliveTask = null; }
+    isReconnecting = false;
+
+    // WebSocket telemetry
+    const closeCode = ev.code;
+    const closeReason = ev.reason || '(no reason)';
+    const tabVisible = !document.hidden;
+    const navigatorOnline = navigator.onLine;
+
+    diagLog(`🔌 WS closed: code=${closeCode} reason='${closeReason}'`, 'err');
+    diagLog(`Telemetry: visible=${tabVisible}, navigator.onLine=${navigatorOnline}`, 'info');
+    diagLog(`Reconnect progress: ${reconnIdx}/${MAX_BACKOFF_ATTEMPTS}`, 'info');
+
+    ws = null;
+
+    // Code 1000 = clean close (user initiated)
+    if (closeCode === 1000) {
+      transition(S.IDLE);
+      failedReconnectCount = 0;
+      diagLog('Clean close (user initiated)', 'ok');
+      return;
+    }
+
+    // Code 1006 = abnormal closure (usually network error or server crash)
+    if (closeCode === 1006) {
+      diagLog('Abnormal closure (network error or server restart)', 'err');
+    }
+
+    // Any other close = unexpected, try to reconnect
+    killMic();
+
+    // Grace policy: require 2 consecutive failed reconnect attempts before FAILED state
+    // This prevents showing "offline failed" on every one-off network hiccup
+    if (reconnIdx >= MAX_BACKOFF_ATTEMPTS) {
+      failedReconnectCount++;
+      if (failedReconnectCount >= 2) {
+        transition(S.FAILED); // give up after 2 consecutive failures
+        diagLog('Max reconnect attempts reached (2 consecutive failures)', 'err');
+      } else {
+        transition(S.OFFLINE);
+        diagLog(`Failed reconnect ${failedReconnectCount}/2 before FAILED state`, 'warn');
+      }
+    } else {
+      failedReconnectCount = 0; // Reset on new reconnect attempt
+      transition(S.OFFLINE);
+      diagLog(`Attempting to reconnect (attempt ${reconnIdx + 1}/${MAX_BACKOFF_ATTEMPTS})`, 'info');
+    }
+
+    if (wsWanted) scheduleReconnect();
+  };
+}
+
+// Start client-side keepalive: expects pong within KEEPALIVE_TIMEOUT
+function startClientKeepalive() {
+  if (clientKeepaliveTask) clearInterval(clientKeepaliveTask);
+  lastPongTime = Date.now();
+
+  // Send keepalive ping every 20s
+  clientKeepaliveTask = setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    try {
+      ws.send(JSON.stringify({ type: 'keepalive_ping' }));
+    } catch (e) {
+      diagLog(`Keepalive ping failed: ${e.message}`, 'err');
+    }
+  }, KEEPALIVE_INTERVAL);
+
+  // Check if pong received within timeout
+  if (keepaliveTimer) clearInterval(keepaliveTimer);
+  keepaliveTimer = setInterval(() => {
+    const timeSinceLastPong = Date.now() - lastPongTime;
+    if (timeSinceLastPong > KEEPALIVE_TIMEOUT) {
+      diagLog(`Keepalive timeout: no pong in ${KEEPALIVE_TIMEOUT}ms, killing socket`, 'err');
+      if (ws) ws.close();
+    }
+  }, KEEPALIVE_TIMEOUT / 2); // check every half the timeout
+}
+
+function scheduleReconnect() {
+  clearTimeout(reconnTimer);
+
+  // Cap attempts at MAX_BACKOFF_ATTEMPTS
+  if (reconnIdx >= MAX_BACKOFF_ATTEMPTS) {
+    $reconnMsg.textContent = `Connection failed. Tap to reconnect.`;
+    diagLog(`Reconnect capped at ${MAX_BACKOFF_ATTEMPTS} attempts`, 'err');
+    return;
+  }
+
+  // Exponential backoff from BACKOFF array
+  const baseDelay = BACKOFF[Math.min(reconnIdx, BACKOFF.length - 1)];
+
+  // Add jitter: ±25% randomness to prevent thundering herd
+  const jitter = baseDelay * (0.75 + Math.random() * 0.5);
+  const delay = Math.round(jitter);
+
+  // Reduce aggressiveness if tab hidden (be nice to background tabs)
+  const effectiveDelay = document.hidden ? delay * 3 : delay;
+
+  $reconnMsg.textContent = `Reconnecting in ${(effectiveDelay/1000).toFixed(1)}s\u2026`;
+  diagLog(`Reconnect in ${effectiveDelay}ms (attempt ${reconnIdx+1}/${MAX_BACKOFF_ATTEMPTS})`);
+
+  reconnTimer = setTimeout(() => {
+    reconnIdx++;
+    isReconnecting = false; // allow wsConnect to proceed
+    wsConnect();
+  }, effectiveDelay);
+}
+
+function forceReconnect() {
+  clearTimeout(reconnTimer);
+  reconnIdx = 0;
+  isReconnecting = false;
+  failedReconnectCount = 0;
+  diagLog('Manual reconnect', 'ok');
+  wsConnect();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MESSAGE HANDLER
+// ═══════════════════════════════════════════════════════════
+function handleMsg(msg) {
+  switch (msg.type) {
+    case 'flow.ready':
+      // Update keepalive timeout from server (Stable: 90s, Fast: 45s)
+      if (msg.keepalive_timeout_ms) {
+        KEEPALIVE_TIMEOUT = msg.keepalive_timeout_ms;
+        diagLog(`Server ready: mode=${msg.reliability_mode} (keepalive: ${KEEPALIVE_TIMEOUT}ms)`);
+      }
+      serverReadyGate = true;
+      transition(S.READY);
+      reconnIdx = 0;
+      failedReconnectCount = 0;
+      haptic(20);
+      // if user wanted a live session, start mic automatically
+      // In HOLD mode, only start if finger is still down
+      if (sessionWanted && (!holdToTalkMode || isHoldingMic)) startMic();
+      break;
+
+    case 'mode_confirmed':
+      // Server acknowledged mode preference and applied it
+      if (msg.keepalive_timeout_ms) {
+        KEEPALIVE_TIMEOUT = msg.keepalive_timeout_ms;
+        diagLog(`Mode confirmed: ${msg.reliability_mode} (keepalive: ${KEEPALIVE_TIMEOUT}ms)`, 'ok');
+      }
+      break;
+
+    case 'ping':
+      // respond to server keepalive
+      lastPongTime = Date.now();
+      if (ws && ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ type:'pong' }));
+      break;
+
+    case 'pong':
+      // server responds to client keepalive
+      lastPongTime = Date.now();
+      break;
+
+    case 'keepalive_pong':
+      // explicit keepalive response
+      lastPongTime = Date.now();
+      break;
+
+    case 'speech_started':
+      transition(S.LISTENING); // confirm listening state
+      haptic();
+      break;
+
+    case 'speech_stopped':
+      if (state === S.LISTENING) transition(S.TRANSLATING);
+      break;
+
+    case 'source_transcript':
+      addSourceRow(msg.text);
+      trimTranscript();
+      break;
+
+    case 'translation_delta':
+      appendTranslation(msg.text);
+      break;
+
+    case 'translation_done': {
+      // Save before finishTranslation clears refs
+      const srcEl = currentSrcEl;
+      const tgtTxt = currentTgtTxt;
+      finishTranslation(msg.text, msg.confidence);
+      if (srcEl) {
+        const srcText = srcEl.querySelector('.t-text')?.textContent || '';
+        saveExchange(srcText, msg.text || tgtTxt, msg.confidence);
+      }
+      break;
+    }
+
+    case 'tts_start':
+      transition(S.SPEAKING);
+      break;
+
+    case 'audio_delta':
+      if (state !== S.SPEAKING) transition(S.SPEAKING);
+      enqueueAudio(msg.audio);
+      break;
+
+    case 'turn_complete':
+      // If TTS is still playing, defer the turn cycle until playback finishes
+      if (playing || audioQ.length > 0) {
+        turnCompletePending = true;
+        diagLog('turn_complete deferred (TTS still playing)', 'info');
+      } else {
+        // No TTS playing — complete turn immediately
+        finishTranslation();
+        if (holdToTalkMode) {
+          diagLog('Turn complete → READY (hold mode)', 'ok');
+          killMic();
+          transition(S.READY);
+        } else {
+          transition(S.LISTENING);
+          if (sessionWanted && !mediaStream) startMic();
+        }
+      }
+      break;
+
+    case 'error':
+      addSystemRow(msg.message || 'Unknown error');
+      diagLog(msg.message || 'Server error', 'err');
+      // stay in current state, don't crash
+      break;
+
+    default:
+      diagLog(`Unknown msg: ${msg.type}`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// USER ACTIONS
+// ═══════════════════════════════════════════════════════════
+function userStart() {
+  // ── STOP: tap during active session → clean stop ──
+  if ([S.LISTENING, S.TRANSLATING, S.SPEAKING].includes(state)) {
+    sessionWanted = false;
+    wsWanted = false;
+    isReconnecting = false;
+    killMic();
+    killPlayback();
+    clearTimeout(reconnTimer);
+    clearTimeout(stableTimer);
+    if (keepaliveTimer) { clearInterval(keepaliveTimer); keepaliveTimer = null; }
+    if (clientKeepaliveTask) { clearInterval(clientKeepaliveTask); clientKeepaliveTask = null; }
+    if (ws) { ws.close(1000, 'user stop'); ws = null; }
+    serverReadyGate = false;
+    reconnIdx = 0;
+    failedReconnectCount = 0;
+    turnCompletePending = false;
+    vad.reset();
+    transition(S.IDLE);
+    haptic(20);
+    diagLog('Session stopped by user', 'ok');
+    return;
+  }
+
+  if (state === S.CONNECTING) return; // wait for connection
+
+  // ── START: tap from any idle/offline/ready state → go live ──
+  sessionWanted = true;
+  wsWanted = true;
+  haptic(20);
+
+  if (state === S.IDLE || state === S.OFFLINE || state === S.FAILED) {
+    forceReconnect(); // mic starts after flow.ready
+    return;
+  }
+
+  if (state === S.READY && serverReadyGate) {
+    diagLog('Starting mic...', 'info');
+    startMic();
+    return;
+  }
+
+  diagLog('Waiting for server...', 'info');
+}
+
+// ── ORB INTERACTION (mode-aware) ─────────────────────────
+// AUTO mode: click = toggle session ON/OFF
+// HOLD mode: press = start session + listen, release = finalize turn
+let suppressNextClick = false;
+
+$micBtn.addEventListener('click', (e) => {
+  // In HOLD mode, suppress the click that fires after mouseup/touchend
+  if (suppressNextClick) { suppressNextClick = false; return; }
+  if (holdToTalkMode) return;
+  userStart();
+});
+
+// keyboard: Space or Enter on mic button
+$micBtn.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault();
+    if (holdToTalkMode) return;
+    userStart();
+  }
+});
+
+// HOLD mode: press-to-talk handlers (mouse + touch)
+$micBtn.addEventListener('mousedown', (e) => {
+  if (!holdToTalkMode) return;
+  e.preventDefault();
+  isHoldingMic = true;
+  sessionWanted = true;
+  wsWanted = true;
+  // Start session if not already running
+  if (state === S.IDLE || state === S.OFFLINE || state === S.FAILED) {
+    forceReconnect(); // connects → flow.ready → startMic (gated by isHoldingMic)
+  } else if (state === S.READY && serverReadyGate) {
+    startMic();
+  }
+});
+
+document.addEventListener('mouseup', (e) => {
+  if (!holdToTalkMode || !isHoldingMic) return;
+  isHoldingMic = false;
+  suppressNextClick = true;
+  // Do NOT killMic() — let audio stream continue so server VAD
+  // sees trailing silence and naturally fires speech_stopped.
+  // Do NOT set sessionWanted=false — the holdToTalkMode guards
+  // in drainQ()/turn_complete will land on READY (no auto-relisten).
+  // Mic is killed later when turn_complete arrives.
+  diagLog('Hold released, waiting for server to finalize', 'info');
+});
+
+$micBtn.addEventListener('touchstart', (e) => {
+  if (!holdToTalkMode) return;
+  isHoldingMic = true;
+  sessionWanted = true;
+  wsWanted = true;
+  if (state === S.IDLE || state === S.OFFLINE || state === S.FAILED) {
+    forceReconnect();
+  } else if (state === S.READY && serverReadyGate) {
+    startMic();
+  }
+});
+
+$micBtn.addEventListener('touchend', (e) => {
+  if (!holdToTalkMode || !isHoldingMic) return;
+  isHoldingMic = false;
+  suppressNextClick = true;
+  // Same as mouseup: let audio flow, server VAD will finalize naturally.
+  diagLog('Touch released, waiting for server to finalize', 'info');
+});
+
+// reconnect button
+$reconnBtn.addEventListener('click', () => {
+  wsWanted = true;
+  sessionWanted = true;
+  forceReconnect();
+});
+
+// audio toggle
+$audioBtn.addEventListener('click', () => {
+  audioOn = !audioOn;
+  $audioBtn.classList.toggle('on', audioOn);
+  $audioBtn.setAttribute('aria-pressed', audioOn);
+  haptic();
+});
+
+// ── MODE TOGGLE (AUTO ↔ HOLD) ────────────────────────────
+function setMode(mode) {
+  // mode: 'auto' or 'hold'
+  holdToTalkMode = (mode === 'hold');
+  localStorage.setItem('holdToTalkMode', holdToTalkMode ? 'true' : 'false');
+
+  // Update aria-pressed on both buttons
+  $modeAuto.setAttribute('aria-pressed', !holdToTalkMode);
+  $modeHold.setAttribute('aria-pressed', holdToTalkMode);
+
+  // Reconcile: no finger is physically pressing while tapping the toggle
+  isHoldingMic = false;
+
+  diagLog(`Mode: ${holdToTalkMode ? 'HOLD' : 'AUTO'}`, 'info');
+}
+
+// Init toggle state on load
+if (holdToTalkMode) {
+  $modeAuto.setAttribute('aria-pressed', 'false');
+  $modeHold.setAttribute('aria-pressed', 'true');
+}
+
+$modeAuto.addEventListener('click', () => { setMode('auto'); haptic(); });
+$modeHold.addEventListener('click', () => { setMode('hold'); haptic(); });
+
+// drawer toggle (history + diagnostics)
+const $drawer = document.getElementById('drawer');
+const $drawerOverlay = document.getElementById('drawerOverlay');
+const $drawerClose = document.getElementById('drawerClose');
+
+function openDrawer() {
+  if ($drawer) $drawer.dataset.open = 'true';
+  if ($drawerOverlay) { $drawerOverlay.style.opacity = '1'; $drawerOverlay.style.pointerEvents = 'auto'; }
+  haptic();
+}
+function closeDrawer() {
+  if ($drawer) $drawer.dataset.open = 'false';
+  if ($drawerOverlay) { $drawerOverlay.style.opacity = '0'; $drawerOverlay.style.pointerEvents = 'none'; }
+}
+
+$diagBtn.addEventListener('click', openDrawer);
+if ($drawerClose) $drawerClose.addEventListener('click', closeDrawer);
+if ($drawerOverlay) $drawerOverlay.addEventListener('click', closeDrawer);
+
+// manual OFF button - forcefully stop everything
+const $offBtn = document.getElementById('offBtn');
+if ($offBtn) {
+  $offBtn.addEventListener('click', () => {
+    diagLog('MANUAL STOP - closing session', 'err');
+    sessionWanted = false;
+    wsWanted = false;
+    isReconnecting = false;
+    killMic();
+    killPlayback();
+    if (keepaliveTimer) { clearInterval(keepaliveTimer); keepaliveTimer = null; }
+    if (clientKeepaliveTask) { clearInterval(clientKeepaliveTask); clientKeepaliveTask = null; }
+    clearTimeout(reconnTimer);
+    clearTimeout(stableTimer);
+    if (ws) {
+      ws.close(1000, 'user manual stop');
+      ws = null;
+    }
+    serverReadyGate = false;
+    reconnIdx = 0;
+    failedReconnectCount = 0;
+    vad.reset();
+    transition(S.IDLE);
+    haptic(30);
+    diagLog('Session stopped', 'ok');
+  });
+}
+
+// autoscroll toggle
+if ($scrollToggle) $scrollToggle.addEventListener('click', () => {
+  autoScroll = !autoScroll;
+  if ($scrollCheck) $scrollCheck.textContent = autoScroll ? '\u2713' : '';
+  $scrollToggle.setAttribute('aria-pressed', autoScroll);
+});
+
+// ── cleanup on unload ─────────────────────────────────────
+// Use 'pagehide' instead of 'beforeunload' — on mobile, beforeunload fires on
+// background/tab-switch/screen-lock, killing the session permanently.
+// pagehide with persisted=false means the page is actually being destroyed.
+window.addEventListener('pagehide', (e) => {
+  if (!e.persisted) {
+    // Page is actually being destroyed (navigation away, tab close)
+    sessionWanted = false;
+    wsWanted = false;
+    killMic(); killPlayback();
+    if (ws) { ws.close(1000, 'page unload'); ws = null; }
+  }
+  // If e.persisted = true, page is going to bfcache (back/forward) — don't kill session
+});
+
+// ── visibility change: reduce reconnect aggressiveness ────
+document.addEventListener('visibilitychange', () => {
+  if (
+    document.visibilityState === 'visible' &&
+    state === S.OFFLINE &&
+    wsWanted &&
+    sessionWanted
+  ) {
+    forceReconnect();
+  }
+});
+
+// ── Wake Lock ─────────────────────────────────────────────
+let wakeLock = null;
+async function acquireWake() {
+  try {
+    if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+  } catch(e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && [S.LISTENING, S.TRANSLATING, S.SPEAKING].includes(state))
+    acquireWake();
+});
+
+// ── Lifecycle: Visibility (backgrounding/foregrounding) ────
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // App came to foreground — check if WS is actually alive
+    diagLog('App foreground', 'ok');
+    const wsAlive = ws && ws.readyState === WebSocket.OPEN;
+    if (!wsAlive && wsWanted && sessionWanted) {
+      // WS died while backgrounded — reconnect immediately (active session only)
+      diagLog('WS dead after foreground, forcing reconnect', 'warn');
+      reconnIdx = 0;
+      forceReconnect();
+    } else if (wsAlive && sessionWanted && !mediaStream && state === S.READY) {
+      // WS is alive but mic stopped — restart mic
+      diagLog('Restarting mic after foreground', 'ok');
+      startMic();
+    }
+  } else {
+    // App backgrounded
+    diagLog('App background', 'ok');
+  }
+});
+
+// ── Lifecycle: Online/Offline status ────
+window.addEventListener('online', () => {
+  diagLog('Network online', 'ok');
+  if (state === S.OFFLINE && wsWanted && sessionWanted) {
+    reconnIdx = 0;
+    forceReconnect();
+  }
+});
+
+window.addEventListener('offline', () => {
+  diagLog('Network offline', 'err');
+  transition(S.OFFLINE);
+});
+
+// ── Service Worker ────────────────────────────────────────
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/static/sw.js').catch(()=>{});
+
+// ── Initial log ───────────────────────────────────────────
+diagLog('Flow client loaded');
+
+// ── Startup behavior ─────────────────────────────────────
+// No auto-connect on load.
+// Connect only when user explicitly starts a session (mic tap / reconnect button).
+</script>
+
+<!-- VAD SETTINGS MODAL -->
+<div id="vadModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:1100;align-items:center;justify-content:center;">
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:24px;width:90%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="margin:0;font-size:18px;color:var(--text);">Voice Settings</h2>
+      <button id="vadClose" style="background:none;border:none;color:var(--text-2);cursor:pointer;font-size:24px;padding:0;">&#10005;</button>
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;color:var(--text-2);font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+        Sensitivity: <span id="sensitivityValue" style="color:var(--accent);">50%</span>
+      </label>
+      <input type="range" id="sensitivitySlider" min="0" max="100" value="50" style="width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;-webkit-appearance:none;">
+      <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Less sensitive &#x2190; &#x2192; More sensitive</div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;color:var(--text-2);font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+        End-of-Speech Delay: <span id="delayValue" style="color:var(--accent);">650ms</span>
+      </label>
+      <input type="range" id="delaySlider" min="300" max="2000" value="650" step="50" style="width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;-webkit-appearance:none;">
+      <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Quick &#x2190; &#x2192; Slow finalize</div>
+    </div>
+    <div style="margin-bottom:20px;border-top:1px solid var(--border);padding-top:16px;">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;color:var(--text-2);font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">I speak:</label>
+        <select id="sourceLanguage" style="width:100%;padding:8px;background:var(--surface3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-family:inherit;">
+          <option value="en">English</option>
+          <option value="pt">Portugu&#234;s (Brasil)</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block;color:var(--text-2);font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Translate to:</label>
+        <select id="targetLanguage" style="width:100%;padding:8px;background:var(--surface3);border:1px solid var(--border);color:var(--text);border-radius:6px;font-family:inherit;">
+          <option value="pt">Portugu&#234;s (Brasil)</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <button id="swapLanguages" style="width:100%;padding:8px;background:var(--accent-bg);border:1px solid var(--accent);color:var(--accent);border-radius:6px;font-weight:600;cursor:pointer;font-family:inherit;">&#8596; Swap Languages</button>
+    </div>
+    <button id="vadSave" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;">Save &amp; Close</button>
+  </div>
+</div>
+
+<style>
+input[type="range"] { -webkit-appearance: none; appearance: none; }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; background: var(--accent);
+  border-radius: 50%; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(224, 168, 70, 0.3);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px; background: var(--accent);
+  border-radius: 50%; cursor: pointer; border: none;
+  box-shadow: 0 2px 8px rgba(224, 168, 70, 0.3);
+}
+</style>
+
+<script>
+// ─ VAD Settings UI ─
+const $vadModal = document.getElementById('vadModal');
+const $sensitivitySlider = document.getElementById('sensitivitySlider');
+const $delaySlider = document.getElementById('delaySlider');
+const $sensitivityValue = document.getElementById('sensitivityValue');
+const $delayValue = document.getElementById('delayValue');
+const $settingsBtn = document.getElementById('settingsBtn');
+const $vadClose = document.getElementById('vadClose');
+const $vadSave = document.getElementById('vadSave');
+
+// Guard: only run if all elements exist
+if ($settingsBtn && $vadModal && $sensitivitySlider && $delaySlider) {
+  // Update slider display
+  function updateSliderDisplay() {
+    const sens = parseInt($sensitivitySlider.value);
+    const delay = parseInt($delaySlider.value);
+    $sensitivityValue.textContent = sens + '%';
+    $delayValue.textContent = delay + 'ms';
+  }
+
+  // Open settings
+  $settingsBtn.addEventListener('click', () => {
+    $sensitivitySlider.value = Math.round(vad.sensitivity * 100);
+    $delaySlider.value = vad.endDelayMs;
+    updateSliderDisplay();
+    $vadModal.style.display = 'flex';
+  });
+
+  // Close settings
+  const closeSettings = () => {
+    $vadModal.style.display = 'none';
+  };
+
+  $vadClose.addEventListener('click', closeSettings);
+  $vadSave.addEventListener('click', () => {
+    vad.sensitivity = parseInt($sensitivitySlider.value) / 100;
+    vad.endDelayMs = parseInt($delaySlider.value);
+    vad.save();
+    diagLog(`VAD: Sensitivity=${(vad.sensitivity*100).toFixed(0)}%, Delay=${vad.endDelayMs}ms`, 'ok');
+    closeSettings();
+  });
+
+  $sensitivitySlider.addEventListener('input', updateSliderDisplay);
+  $delaySlider.addEventListener('input', updateSliderDisplay);
+
+  // ──── LANGUAGE SETTINGS ────
+  const $sourceLanguage = document.getElementById('sourceLanguage');
+  const $targetLanguage = document.getElementById('targetLanguage');
+  const $swapLanguages = document.getElementById('swapLanguages');
+
+  let sourceLanguage = localStorage.getItem('sourceLanguage') || 'en';
+  let targetLanguage = localStorage.getItem('targetLanguage') || 'pt';
+
+  if ($sourceLanguage) $sourceLanguage.value = sourceLanguage;
+  if ($targetLanguage) $targetLanguage.value = targetLanguage;
+
+  function sendLanguageToServer() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'language_config',
+        source_language: sourceLanguage,
+        target_language: targetLanguage
+      }));
+      diagLog(`Language config sent: ${sourceLanguage} → ${targetLanguage}`, 'ok');
+    }
+  }
+
+  function updateLanguageDisplay() {
+    const langNames = { 'en': 'English', 'pt': 'Português' };
+    const $langBar = document.querySelector('.lang-bar');
+    if ($langBar) {
+      $langBar.innerHTML = `<span class="lang-tag">${langNames[sourceLanguage] || 'English'}</span><span class="lang-arrow">&#8644;</span><span class="lang-tag">${langNames[targetLanguage] || 'Português'}</span>`;
+    }
+  }
+
+  if ($sourceLanguage) {
+    $sourceLanguage.addEventListener('change', (e) => {
+      sourceLanguage = e.target.value;
+      localStorage.setItem('sourceLanguage', sourceLanguage);
+      updateLanguageDisplay();
+      sendLanguageToServer();
+    });
+  }
+
+  if ($targetLanguage) {
+    $targetLanguage.addEventListener('change', (e) => {
+      targetLanguage = e.target.value;
+      localStorage.setItem('targetLanguage', targetLanguage);
+      updateLanguageDisplay();
+      sendLanguageToServer();
+    });
+  }
+
+  if ($swapLanguages) {
+    $swapLanguages.addEventListener('click', () => {
+      [sourceLanguage, targetLanguage] = [targetLanguage, sourceLanguage];
+      if ($sourceLanguage) $sourceLanguage.value = sourceLanguage;
+      if ($targetLanguage) $targetLanguage.value = targetLanguage;
+      localStorage.setItem('sourceLanguage', sourceLanguage);
+      localStorage.setItem('targetLanguage', targetLanguage);
+      updateLanguageDisplay();
+      sendLanguageToServer();
+      diagLog(`Languages swapped: ${sourceLanguage} ↔ ${targetLanguage}`, 'info');
+    });
+  }
+
+  updateLanguageDisplay();
+
+  // Close on backdrop click
+  $vadModal.addEventListener('click', (e) => {
+    if (e.target === $vadModal) closeSettings();
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODE B: RMS INTENSITY → ORB GLOW
+// ══════════════════════════════════════════════════════════════
+(function modeB() {
+  setInterval(() => {
+    const intensity = Math.min(peakLvl * 2, 1);
+    document.documentElement.style.setProperty('--rms-intensity', intensity);
+    document.documentElement.style.setProperty('--orb-level', intensity);
+  }, 50);
+})();
+
+</script>
+
+</body>
+</html>

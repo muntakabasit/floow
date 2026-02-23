@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+__pycache__
+*.py[cod]
+.venv
+venv
+models/
+*.onnx
+*.bin
+*.md
+.DS_Store
+fly.toml
+server_local.py
